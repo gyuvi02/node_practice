@@ -1,6 +1,8 @@
 const fs = require('fs');
 const http = require('http');
 const url = require('url');
+const slugify = require('slugify');
+const replaceTemplate =  require('./modules/replaceTemplate');
 
 
 // const textIn = fs.readFileSync('./txt/input.txt', 'utf-8');
@@ -21,6 +23,7 @@ const url = require('url');
 //         });
 //     });
 
+
 const tempOverview = fs.readFileSync(`${__dirname}/templates/template-overview.html`, 'utf-8');
 const tempCard = fs.readFileSync(`${__dirname}/templates/template-card.html`, 'utf-8');
 const tempProduct = fs.readFileSync(`${__dirname}/templates/template-product.html`, 'utf-8');
@@ -28,22 +31,38 @@ const tempProduct = fs.readFileSync(`${__dirname}/templates/template-product.htm
 const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8');
     const dataObj = JSON.parse(data);
 
+const slugs = dataObj.map(el => slugify(el.productName, {lower: true,}));
+console.log(slugs);
+
+
 const server = http.createServer((req, resp) => {
-    const pathName = req.url;
+    const {query, pathname} = url.parse(req.url, true);
 
 //Overview page
-    if (pathName === '/overview' || pathName === '/') {
+    if (pathname === '/overview' || pathname === '/') {
         resp.writeHead(200, {
             'Content-type': 'text/html'
         });
-        resp.end(tempOverview);
+
+        const cardsHtml = dataObj.map(el => replaceTemplate(tempCard, el)).join('');
+
+        const output = tempOverview.replace('{%PRODUCT-CARDS%}', cardsHtml);
+        resp.end(output);
 
 //Product page
-    }else if (pathName === '/product') {
-         resp.end('This is the product');
+    }else if (pathname === '/product') {
+        const product = dataObj[query.id];
+
+        resp.writeHead(200, {
+            'Content-type': 'text/html'
+        });
+
+        const output = replaceTemplate(tempProduct, product);
+
+        resp.end(output);
 
 //API
-    }else if (pathName === "/api") {
+    }else if (pathname === "/api") {
         resp.writeHead(200, {
             'Content-type': 'application/json'
         });
